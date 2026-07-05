@@ -19,36 +19,47 @@ export async function POST(req: NextRequest) {
     const playerId = randomUUID();
     const code = generateCode();
 
-    await db.insert(rooms).values({
-      id: roomId,
-      code,
-      hostId: playerId,
-      status: "waiting",
-      isPrivate: isPrivate ?? true,
-      maxPlayers: maxPlayers ?? 8,
-      timeLimit: timeLimit ?? null,
-      region: region ?? "world",
-      currentRound: 0,
-    });
+    // Use a transaction to ensure both room and player are created
+    return await db.transaction(async (tx) => {
+      await tx.insert(rooms).values({
+        id: roomId,
+        code: code.toUpperCase(),
+        hostId: playerId,
+        status: "waiting",
+        isPrivate: Boolean(isPrivate),
+        maxPlayers: Number(maxPlayers) || 8,
+        timeLimit: timeLimit ? Number(timeLimit) : null,
+        region: String(region || "world"),
+        currentRound: 0,
+      });
 
-    await db.insert(players).values({
-      id: playerId,
-      roomId,
-      name: playerName.trim().slice(0, 20),
-      totalScore: 0,
-      isReady: false,
-      isConnected: true,
-    });
+      await tx.insert(players).values({
+        id: playerId,
+        roomId: roomId,
+        name: playerName.trim().slice(0, 20),
+        totalScore: 0,
+        isReady: false,
+        isConnected: true,
+      });
 
-    return NextResponse.json({
-      roomId,
-      roomCode: code,
-      playerId,
+      return NextResponse.json({
+        roomId,
+        roomCode: code,
+        playerId,
+      });
     });
   } catch (error) {
     console.error("Error creating room:", error);
-    return NextResponse.json({ 
-      error: error instanceof Error ? error.message : "Failed to create room"
-    }, { status: 500 });
+    // Extract a cleaner error message if possible
+    let errorMessage = "Failed to create room";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      // If it's a Drizzle/PG error, it might have a "detail" field
+      if ("detail" in error && error.detail) {
+        errorMessage = `${errorMessage}: ${error.detail}`;
+      }
+    }
+    
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

@@ -51,6 +51,13 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Error joining room:", error);
-    return NextResponse.json({ error: "Failed to join room" }, { status: 500 });
+    let errorMessage = "Failed to join room";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      if ("detail" in error && error.detail) {
+        errorMessage = `${errorMessage}: ${error.detail}`;
+      }
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
