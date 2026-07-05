@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { rooms, players, rounds, guesses } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "crypto";
 import { haversineDistance, calculateScore } from "@/lib/scoring";
 
 export async function POST(
@@ -71,7 +71,7 @@ export async function POST(
 
     // Save guess
     await db.insert(guesses).values({
-      id: uuidv4(),
+      id: randomUUID(),
       roundId: round.id,
       playerId,
       lat,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { rooms, players, rounds } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "crypto";
 import { getRandomLocation } from "@/lib/locations";
 import { WIN_SCORE } from "@/lib/scoring";
 import type { Region } from "@/lib/locations";
@@ -51,7 +51,7 @@ export async function POST(
     // Start next round
     const nextRoundNumber = room.currentRound + 1;
     const location = getRandomLocation(room.region as Region, roomId);
-    const roundId = uuidv4();
+    const roundId = randomUUID();
 
     await db.insert(rounds).values({
       id: roundId,

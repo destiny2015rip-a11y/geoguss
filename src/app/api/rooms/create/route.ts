@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { rooms, players } from "@/db/schema";
-import { v4 as uuidv4 } from "uuid";
 import { customAlphabet } from "nanoid";
+import { randomUUID } from "crypto";
 
 const generateCode = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
 
@@ -15,8 +15,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Player name is required" }, { status: 400 });
     }
 
-    const roomId = uuidv4();
-    const playerId = uuidv4();
+    const roomId = randomUUID();
+    const playerId = randomUUID();
     const code = generateCode();
 
     await db.insert(rooms).values({
@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Error creating room:", error);
-    return NextResponse.json({ error: "Failed to create room" }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : "Failed to create room"
+    }, { status: 500 });
   }
 }
