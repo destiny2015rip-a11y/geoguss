@@ -1,0 +1,17 @@
+export const SOCKET_EVENTS = {
+  ROOM_CREATE: "room:create",
+  ROOM_JOIN: "room:join",
+  ROOM_READY: "room:ready",
+  ROOM_START: "room:start",
+  ROOM_CREATED: "room:created",
+  ROOM_PLAYER_JOINED: "room:player-joined",
+  ROOM_PLAYER_LEFT: "room:player-left",
+  ROOM_SETTINGS: "room:settings",
+  GAME_ROUND_START: "game:round-start",
+  GAME_SUBMIT_GUESS: "game:submit-guess",
+  GAME_PLAYER_GUESSED: "game:player-guessed",
+  GAME_ROUND_END: "game:round-end",
+  GAME_NEXT_ROUND: "game:next-round",
+  GAME_MATCH_END: "game:match-end",
+  ERROR: "error",
+};

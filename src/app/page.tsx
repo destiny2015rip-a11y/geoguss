@@ -2,278 +2,115 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSocket } from "@/hooks/useSocket";
+import { SOCKET_EVENTS } from "@/lib/socket-events";
+import { MapPin, Globe, Play, Users } from "lucide-react";
+import { motion } from "framer-motion";
 
-export default function HomePage() {
-  const [mode, setMode] = useState<"home" | "create" | "join">("home");
-  const [playerName, setPlayerName] = useState("");
-  const [roomCode, setRoomCode] = useState("");
-  const [isPrivate, setIsPrivate] = useState(true);
-  const [maxPlayers, setMaxPlayers] = useState(6);
-  const [timeLimit, setTimeLimit] = useState(0);
-  const [region, setRegion] = useState("world");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+export default function Home() {
   const router = useRouter();
+  const { socket } = useSocket();
+  const [nickname, setNickname] = useState("");
+  const [roomCode, setRoomCode] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleCreate = async () => {
-    if (!playerName.trim()) {
-      setError("Enter your name");
-      return;
-    }
+  const handleCreateRoom = () => {
+    if (!nickname) return alert("Please enter a nickname");
     setLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/rooms/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          playerName: playerName.trim(),
-          isPrivate,
-          maxPlayers,
-          timeLimit: timeLimit || null,
-          region,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      localStorage.setItem("playerId", data.playerId);
-      localStorage.setItem("playerName", playerName.trim());
-      router.push(`/room/${data.roomId}`);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to create room");
-    } finally {
-      setLoading(false);
-    }
+    socket.emit(SOCKET_EVENTS.ROOM_CREATE, { nickname });
   };
 
-  const handleJoin = async () => {
-    if (!playerName.trim()) {
-      setError("Enter your name");
-      return;
-    }
-    if (!roomCode.trim()) {
-      setError("Enter room code");
-      return;
-    }
+  const handleJoinRoom = () => {
+    if (!nickname || !roomCode) return alert("Please enter nickname and room code");
     setLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/rooms/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: roomCode.trim().toUpperCase(),
-          playerName: playerName.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      localStorage.setItem("playerId", data.playerId);
-      localStorage.setItem("playerName", playerName.trim());
-      router.push(`/room/${data.roomId}`);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to join room");
-    } finally {
-      setLoading(false);
-    }
+    socket.emit(SOCKET_EVENTS.ROOM_JOIN, { code: roomCode.toUpperCase(), nickname });
   };
+
+  socket?.on(SOCKET_EVENTS.ROOM_CREATED, ({ code }) => {
+    router.push(`/room/${code}?nickname=${nickname}`);
+  });
+
+  socket?.on(SOCKET_EVENTS.ROOM_PLAYER_JOINED, () => {
+    if (roomCode) {
+      router.push(`/room/${roomCode.toUpperCase()}?nickname=${nickname}`);
+    }
+  });
+
+  socket?.on(SOCKET_EVENTS.ERROR, (msg) => {
+    alert(msg);
+    setLoading(false);
+  });
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-slate-950 p-6">
+      <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(17,24,39,0)_0%,rgba(2,6,23,1)_100%)]"></div>
+        <div className="opacity-20">
+          <Globe className="absolute -bottom-24 -left-24 h-96 w-96 text-blue-500 blur-sm" />
+          <MapPin className="absolute -top-12 -right-12 h-64 w-64 text-emerald-500 blur-sm" />
+        </div>
       </div>
 
-      <div className="relative z-10 w-full max-w-lg">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <h1 className="text-6xl font-black tracking-tight mb-2">
-            <span className="text-primary">Geo</span>
-            <span className="text-accent">Arena</span>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-10 w-full max-w-md space-y-8 rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl"
+      >
+        <div className="text-center">
+          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
+            Geo<span className="text-blue-500">Arena</span>
           </h1>
-          <p className="text-gray-400 text-lg">Multiplayer Geo Guessing Game</p>
-          <p className="text-gray-500 mt-1">Race to 10,000 points • Challenge your friends</p>
+          <p className="mt-2 text-slate-400">Multiplayer Location Guessing Game</p>
         </div>
 
-        {mode === "home" && (
-          <div className="space-y-4 animate-[slide-up_0.3s_ease-out]">
-            <button
-              onClick={() => setMode("create")}
-              className="w-full py-4 px-6 bg-primary hover:bg-primary-dark text-white text-lg font-bold rounded-2xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/30"
-            >
-              🎮 Create Room
-            </button>
-            <button
-              onClick={() => setMode("join")}
-              className="w-full py-4 px-6 bg-dark-card hover:bg-dark-lighter text-white text-lg font-bold rounded-2xl border border-dark-border transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              🔗 Join Room
-            </button>
-
-            {/* How to play */}
-            <div className="mt-8 bg-dark-card border border-dark-border rounded-2xl p-6">
-              <h3 className="text-lg font-bold mb-3 text-primary-light">How to Play</h3>
-              <div className="space-y-2 text-gray-400 text-sm">
-                <p>🌍 You&apos;ll see a location on the map</p>
-                <p>📍 Place your marker where you think it is</p>
-                <p>⚡ Closer guess = more points</p>
-                <p>🏆 First to 10,000 points wins!</p>
-              </div>
-            </div>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-300">Nickname</label>
+            <input
+              type="text"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              className="mt-1 block w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-blue-500"
+              placeholder="Enter your name"
+            />
           </div>
-        )}
 
-        {mode === "create" && (
-          <div className="bg-dark-card border border-dark-border rounded-2xl p-6 space-y-4 animate-[slide-up_0.3s_ease-out]">
-            <h2 className="text-2xl font-bold text-center">Create Room</h2>
-
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Your Name</label>
-              <input
-                type="text"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="Enter your name..."
-                maxLength={20}
-                className="w-full px-4 py-3 bg-dark-lighter border border-dark-border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Region</label>
-              <select
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                className="w-full px-4 py-3 bg-dark-lighter border border-dark-border rounded-xl text-white focus:outline-none focus:border-primary transition-colors"
-              >
-                <option value="world">🌍 World</option>
-                <option value="europe">🇪🇺 Europe</option>
-                <option value="asia">🌏 Asia</option>
-                <option value="americas">🌎 Americas</option>
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Max Players</label>
-                <select
-                  value={maxPlayers}
-                  onChange={(e) => setMaxPlayers(Number(e.target.value))}
-                  className="w-full px-4 py-3 bg-dark-lighter border border-dark-border rounded-xl text-white focus:outline-none focus:border-primary transition-colors"
-                >
-                  {[2, 3, 4, 5, 6, 8, 10].map((n) => (
-                    <option key={n} value={n}>
-                      {n} players
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Time Limit</label>
-                <select
-                  value={timeLimit}
-                  onChange={(e) => setTimeLimit(Number(e.target.value))}
-                  className="w-full px-4 py-3 bg-dark-lighter border border-dark-border rounded-xl text-white focus:outline-none focus:border-primary transition-colors"
-                >
-                  <option value={0}>No limit</option>
-                  <option value={30}>30 seconds</option>
-                  <option value={60}>1 minute</option>
-                  <option value={120}>2 minutes</option>
-                  <option value={180}>3 minutes</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsPrivate(!isPrivate)}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
-                  isPrivate ? "bg-primary" : "bg-gray-600"
-                }`}
-              >
-                <div
-                  className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                    isPrivate ? "translate-x-6" : "translate-x-0.5"
-                  }`}
-                />
-              </button>
-              <span className="text-sm text-gray-400">Private Room</span>
-            </div>
-
-            {error && (
-              <p className="text-danger text-sm text-center">{error}</p>
-            )}
-
+          <div className="flex flex-col space-y-4">
             <button
-              onClick={handleCreate}
+              onClick={handleCreateRoom}
               disabled={loading}
-              className="w-full py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white transition-all hover:bg-blue-500 disabled:opacity-50"
             >
-              {loading ? "Creating..." : "Create Room"}
+              <Play className="h-5 w-5" />
+              Create Room
             </button>
 
-            <button
-              onClick={() => { setMode("home"); setError(""); }}
-              className="w-full py-2 text-gray-400 hover:text-white transition-colors text-sm"
-            >
-              ← Back
-            </button>
-          </div>
-        )}
-
-        {mode === "join" && (
-          <div className="bg-dark-card border border-dark-border rounded-2xl p-6 space-y-4 animate-[slide-up_0.3s_ease-out]">
-            <h2 className="text-2xl font-bold text-center">Join Room</h2>
-
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Your Name</label>
-              <input
-                type="text"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="Enter your name..."
-                maxLength={20}
-                className="w-full px-4 py-3 bg-dark-lighter border border-dark-border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary transition-colors"
-              />
+            <div className="relative flex items-center py-2">
+              <div className="flex-grow border-t border-white/10"></div>
+              <span className="mx-4 flex-shrink text-xs font-medium uppercase text-slate-500">Or join</span>
+              <div className="flex-grow border-t border-white/10"></div>
             </div>
 
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Room Code</label>
+            <div className="flex gap-2">
               <input
                 type="text"
                 value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                placeholder="Enter 6-character code..."
-                maxLength={6}
-                className="w-full px-4 py-3 bg-dark-lighter border border-dark-border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary transition-colors tracking-widest text-center text-xl font-mono"
+                onChange={(e) => setRoomCode(e.target.value)}
+                className="flex-grow rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-blue-500"
+                placeholder="Room Code"
               />
+              <button
+                onClick={handleJoinRoom}
+                disabled={loading}
+                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-6 py-3 font-semibold text-white transition-all hover:bg-emerald-500 disabled:opacity-50"
+              >
+                <Users className="h-5 w-5" />
+                Join
+              </button>
             </div>
-
-            {error && (
-              <p className="text-danger text-sm text-center">{error}</p>
-            )}
-
-            <button
-              onClick={handleJoin}
-              disabled={loading}
-              className="w-full py-3 bg-accent hover:bg-accent-dark text-white font-bold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Joining..." : "Join Room"}
-            </button>
-
-            <button
-              onClick={() => { setMode("home"); setError(""); }}
-              className="w-full py-2 text-gray-400 hover:text-white transition-colors text-sm"
-            >
-              ← Back
-            </button>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      </motion.div>
+    </main>
   );
 }
