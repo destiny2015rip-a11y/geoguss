@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #6c5ce7;
+  --color-primary-dark: #5a4bd1;
+  --color-primary-light: #a29bfe;
+  --color-accent: #00cec9;
+  --color-accent-dark: #00b894;
+  --color-danger: #ff7675;
+  --color-warning: #fdcb6e;
+  --color-success: #00b894;
+  --color-dark: #0a0a1a;
+  --color-dark-card: #12122a;
+  --color-dark-lighter: #1a1a3e;
+  --color-dark-border: #2d2d5e;
+  --color-gold: #ffd700;
+  --color-silver: #c0c0c0;
+  --color-bronze: #cd7f32;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(108, 92, 231, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(108, 92, 231, 0.6); }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes confetti {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+}
+
+body {
+  background: var(--color-dark);
+  color: white;
+}
